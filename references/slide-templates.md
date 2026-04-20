@@ -49,44 +49,67 @@
 
 ## 2. Divider
 
-**约定**：每节开头 1 张，`data-section` 递增，`.tick.current` 位置随节号移。
+**约定**：每节开头 1 张，`data-section = section.number`，`.tick.current` 位置随节号移。
+
+**示例（第 4 节 / 共 9 节 · 完整字段全齐）**：
 
 ```html
 <div class="slide divider" data-section="4" data-section-name="回放刚才的演示" data-time="28"
      data-notes-strategy="回到演示，一步一步拆解。每步只引入一个新概念。"
      data-notes-speak="接下来我们倒回去看，刚才到底发生了什么。">
   <div class="center">
+    <!-- §符号是视觉固定锚点，不随 source 标题符号变（source 写"第一章"/ "Chapter 1"/ "1、"，这里永远渲染 § + 阿拉伯数字） -->
     <div class="num fade-up d2"><span class="hash">§</span>4</div>
     <div>
       <div class="label fade-up d3">Section · Replay</div>
       <h1 class="fade-up d4">回放刚才的演示</h1>
+      <!-- bridge 有 → 显示；没有 → 整个 .bridge div 省略（不写空 div，避免空引号框） -->
       <div class="bridge fade-up d5">
         <span class="quote-mark">「</span>接下来我们倒回去看，刚才到底发生了什么<span class="quote-mark">」</span>
       </div>
+      <!-- meta-row：duration 有 → .pill 出；后半段 desc 从 strategy 摘一句，没 strategy 就省略后半段 span；两者都无 → 整个 .meta-row 省略 -->
       <div class="meta-row fade-up d6">
         <span class="pill">⏱ 28 min</span>
         <span>6 步拆解 · 每步 4-5 分钟讲一个概念</span>
       </div>
     </div>
   </div>
+  <!-- progress：ticks 数量 = 总节数 N（动态，不是固定 9）；label-r 同步写"第 {number} / {N} 节" -->
   <div class="progress fade-in d6">
     <div class="ticks">
-      <!-- 前 3 节已过 → .done；当前节 → .current；后 5 节 → 空 -->
-      <span class="tick done"></span><span class="tick done"></span><span class="tick done"></span>
-      <span class="tick current"></span>
-      <span class="tick"></span><span class="tick"></span><span class="tick"></span>
-      <span class="tick"></span><span class="tick"></span>
+      {{
+        render N 个 <span class="tick"></span>:
+          - i < number   → class="tick done"
+          - i === number → class="tick current"
+          - i > number   → class="tick"
+      }}
     </div>
-    <span class="label-r">第 4 / 9 节</span>
+    <span class="label-r">第 {number} / {N} 节</span>
   </div>
 </div>
 ```
 
-- `.bridge` 是"承上启下原句"——从讲义里 `data-notes-speak` 首句提炼（用引号包住）
-- `.meta-row .pill` 是时长徽章；后半段描述从讲义"讲解策略"摘一句
-- `.ticks` 里的 `.done / .current / (空)` 按当前节号排。每个 divider 都要更新
+### 字段映射
 
-**省略 bridge 的减版**：如果讲义没给原句，只留 `<h1>`、`<label>`、`<meta-row>`，留空 `.bridge` div 即可（playground 02b 的 A 版）。
+| HTML 位置 | 来源 schema 字段 | 备注 |
+|---|---|---|
+| `data-section` | `section.number` | 从 1 起；也驱动 `.ticks` 的 current 位置 |
+| `data-section-name` | `section.heading` | 供 chrome 面包屑读 |
+| `data-time` | `section.duration` | 没有就**不写此 attr**（不是写 0） |
+| `data-notes-strategy` | `section.speaker_strategy` | 没有就**不写此 attr** |
+| `data-notes-speak` | `section.speaker_speak` | 没有就**不写此 attr** |
+| `.num` 内数字 | `section.number` | `§` 前缀固定，不跟随 source 符号 |
+| `h1` | `section.heading` | 原文 heading，编号已去掉 |
+| `.bridge` 引号内 | `section.bridge` | 没有就**整个省略 `.bridge` div** |
+| `.pill` | `section.duration` | 没有就省略 `.pill`（`.meta-row` 可能剩一个 span 或整体省略）|
+
+### 关键注意
+
+- **`§` 是视觉锚点，永远渲染**。哪怕 source 用"第一章"、"Chapter 1"、"1、"，PPT 上都是 `§1`。
+- **`.ticks` 数量随总节数动态生成**。8 节就 8 个 tick，12 节就 12 个；**不要固定 9 个**。
+- **`.label-r` "第 X / N 节"** 里的 N 同样是总节数，不是 9。
+- **动画 delay**：`.meta-row d6` 与 `.progress d6` **故意同步**（页底两块同时淡入，视觉一致）。`.bridge` 省略时 delay 序列变成 d4 → d6，跳过 d5，属可接受的节奏断层。
+- **降级场景**：详见本文件末尾「缺失字段降级表 · Divider」节，以那里为准。
 
 ---
 
