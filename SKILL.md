@@ -1,6 +1,6 @@
 ---
 name: course-deck
-description: 把 Markdown 课堂讲义（带节分、时长、节奏要点、讲解策略的那种）转成单文件 .html 课堂 PPT。适用于 2-3 小时单人讲完的课、训练营、内部分享。**只要用户提到"把讲义做成 PPT"、"上课用的幻灯片"、"分享会"、"训练营 PPT"、"course slides"，或者给了 .md 讲义说要展示，就要触发本 skill。** 严格走「采访 → 4 轮 playground → 装配」流程，不接受一次生成。视觉系统固定（白底 + 品牌蓝点缀 + 克制 Keynote 风），不让模型自由发挥配色和动画。
+description: 把 Markdown 源（课堂讲义 / 教程 / 技术分享稿 / 内部文档）转成单文件 .html 课堂 PPT。适用于 AI Spark 训练营、内部分享、课程录制等场景。**只要用户提到"把讲义/教程做成 PPT"、"上课用的幻灯片"、"分享会"、"训练营 PPT"、"course slides"，或者给了 .md 说要展示，就要触发本 skill。** 输入先按 `references/source-schema.md` 规范化，缺失字段按降级策略处理（缺备注就留空，不自动编）。严格走「采访 → 4 轮 playground → 装配」流程（第一次或换风格时），有既定风格则走快通道。视觉系统固定（白底 + AI Spark 品牌蓝点缀 + 克制 Keynote 风），不让模型自由发挥配色和动画。
 ---
 
 # course-deck · 讲义到课堂 PPT
@@ -10,30 +10,75 @@ description: 把 Markdown 课堂讲义（带节分、时长、节奏要点、讲
 ## 何时触发
 
 强触发：
-- 用户提供了 .md 讲义（带"§N"节号、时长标注、"跟学员说"、"讲解策略"等内容），说要做成 PPT/幻灯片
+- 用户提供了 .md 源（讲义 / 教程 / 技术分享稿 / 长篇博客），说要做成 PPT / 幻灯片 / 上台讲
 - 用户说"做一个上课用的 PPT"、"训练营要用的幻灯片"、"分享会的 deck"
 - 用户问"怎么把这份讲义/教程展示出来"
 - 用户提到 "AI Spark"、"全链路 AI 创作工作流" 这类课程时
+- 讲义是**完整形态**（带 §N / 时长 / 讲解策略） → lecture 模式
+- 输入是**教程 / 技术文档**（只有 `##` 章节 + 正文，无讲师字段） → tutorial 模式，按降级策略装（无备注 / 无时间条 / 无休息页）
 
 弱触发但仍然适用：
 - "做一个 HTML 幻灯片"、"网页版 PPT"、"演示文稿"
 - 用户已经看过本 skill 的产出（火苗 logo、品牌蓝、克制风），想再做一份
 
 不适用：
-- 单页落地页 / 营销页（不是分节、不是用来上课的）
+- 单页落地页 / 营销页（不是分节、不是用来上台讲的）
 - 数据 dashboard、内部报告
-- 简单的 Markdown 转 HTML（没有讲师上台的诉求）
+- 无章节层级的纯散文 / 纯代码仓库 README（`references/source-schema.md` 里列为 `doc` 类型，**拒绝**，让用户先加 `##` 章节）
 
 ## 输入
 
-最低输入：一份 Markdown 讲义路径。
-讲义最好包含：
+最低输入：一份 Markdown 路径（讲义 / 教程 / 分享稿均可）。
+
+**讲义**（lecture 模式 · 完整形态）最好包含：
 - 节分（# 一、xxx 或 ## §1 xxx）
 - 每节时长（如 `· 5min`）
 - 每节的"讲解策略"或"跟学员说"等讲师视角内容
 - 节内的要点 / 表格 / 流程示意
 
-如果讲义结构不清晰，先帮用户结构化（提取节、时长、要点），再走流程。
+**教程 / 技术文档**（tutorial 模式 · 轻量形态）只要求：
+- 至少一层 `##` 章节标题
+- 章节内有实质内容（段落 / 要点 / 表格 / 代码）
+
+不管哪种输入，skill 第一步都走**输入规范化**，见下一节。
+
+## 输入规范化（**装配前必跑**）
+
+所有 Markdown 源进来，第一步**按 `references/source-schema.md` 解析成结构化 schema**，再进入 playground / 装配。
+
+### 要做的事
+
+1. 按 `references/source-schema.md` 第 2 节的识别规则，逐字段提取：
+   - `title` / `subtitle` / `duration_total`
+   - 每个 `section` 的 `heading` / `number` / `duration` / `speaker_strategy` / `speaker_speak` / `bridge` / `is_break` / `body`
+   - 每个 section body 进一步拆成 `ContentBlock[]`（按 `###` 或段落语义）
+2. 按字段完整度判定内容类型（**lecture** / **tutorial** / **doc**）
+3. 把判定结果**简短报给用户**，例如：
+   > 解析完毕 · 共 7 节 · tutorial 模式（无讲师备注、无时间条、无休息页）· 预计 22 页
+4. 如果是 **doc** 类型（无章节层级） → 停下，请用户先加 `##` 章节再来
+5. 如果 `title` 缺失且无法从文件名推 → 问用户一句
+
+### 缺失字段绝不自动补
+
+**硬性禁令**（重复 `references/source-schema.md` 第 7 节的核心三条）：
+
+- `speaker_speak` / `speaker_strategy` 缺失 → **留空**，不从正文推演一份"模拟讲师口吻"的备注
+- `duration` 缺失 → **留空**，不按 section 数平均分配；时间条整体隐藏
+- `bridge` 缺失 → **留空**，不改写正文首句当 bridge
+
+**为什么**：瞎编的备注会误导讲师，瞎编的时长会让学员做错节奏判断。宁可缺，不能假。
+
+### 降级装配对照
+
+字段缺失时装配侧如何降级，见 `references/slide-templates.md` 末尾的"缺失字段降级表"。核心：
+
+| 缺 | 装配 |
+|---|---|
+| 全部 `duration` | 隐藏底部时间条 + 不生成休息页 |
+| 某节 `duration` | 该节 Divider 的 `⏱ N min` pill 不出 |
+| `speaker_*` | 不写 `data-notes-*` attr（不是写空串）|
+| `bridge` | Divider 的 `.bridge` 保留 div 但内容为空 |
+| `step_points` | Steps 内容页一次全出，不走 `.stepped` |
 
 ## 快通道：按既定风格直接装配（默认就走这条）
 
@@ -112,25 +157,28 @@ description: 把 Markdown 课堂讲义（带节分、时长、节奏要点、讲
 
 ### 阶段 4 · 最终装配
 
-**输出**：`<lecture-name>-PPT.html`，跟讲义同目录。
+**输出**：`<source-name>-PPT.html`，跟源文件同目录。
 
 **做法**：
 1. 读 `assets/final-deck-example.html` 作为骨架——它包含完整的 deck shell、chrome、CSS tokens、JS controller（翻页/步进/演讲者备注/时间条/键盘）
-2. 读讲义 .md，提取每节的：节号、节标题、时长、承上启下原句（用作 bridge）、内容要点、讲解策略（用作演讲者备注）
-3. 按 `references/slide-templates.md` 里的对应模板生成每页 HTML
+2. **用"输入规范化"阶段已经解析好的 schema**（见 `references/source-schema.md`），不要再重新解析 md
+3. 按 `references/slide-templates.md` 里的对应模板生成每页 HTML；**按缺失字段降级表处理空字段**
 4. 按 `references/components.md` 里的对应组件生成目录树 / 流程图 / 对比 / 代码块 slide
 5. 把所有 slide 装进 deck，**保留 example 里的 deck-chrome、speaker-notes、hotkey-help、JS 不变**
 6. 用浏览器打开供用户验收
 
-**slide 顺序约定**（基于讲义 9 节 + 2 休息）：
+**slide 顺序约定**（典型 lecture 9 节 + 2 休息）：
 1. Cover
 2. §1 Divider → §1 内容页
 3. §2 Divider → §2 内容页
 4. ...每节都是 Divider → 内容页（数量按节大小定）
-5. 休息节用 `.slide.break`
+5. 休息节（`is_break = true`）用 `.slide.break`
 6. 末尾 End / Q&A 页
 
-页数预期：9 节讲义 ≈ 30-40 页。
+**页数预期**：
+- lecture 模式 9 节 ≈ 30-40 页
+- tutorial 模式 ≈ 1.5-2 × 章节数（无休息页、章节通常更短）
+- 不论哪种模式，Cover + End 各 1 张是固定的
 
 ## 设计系统（**严格遵守**）
 
@@ -176,6 +224,7 @@ description: 把 Markdown 课堂讲义（带节分、时长、节奏要点、讲
 
 ## 参考文件
 
+- `references/source-schema.md` — **输入源字段 schema + 识别规则 + 降级策略**（装配前必读）
 - `references/design-system.md` — 配色 / 动画 / 单位 / 关键技巧
 - `references/interview-script.md` — 12 项决策的完整问句和推荐项
 - `references/slide-templates.md` — 6 类 slide（cover/divider/break/concept/steps/table）的 HTML 骨架

@@ -266,3 +266,72 @@
 - 重点节（如 §4）可以拆成 6-7 页，节奏是"每 4-5 分钟一页"
 - 轻节（§1 开场、§9 收尾）1-2 页即可
 - Break 的 `data-section="0"` 表示不纳入进度（chrome 隐藏）
+
+---
+
+## 缺失字段降级表（**装配时必读**）
+
+当输入规范化后某些字段为空（尤其是 tutorial 模式），按下表降级，**不要瞎编**。配合 `references/source-schema.md` 第 3 节和第 7 节看。
+
+### Cover
+
+| 字段缺失 | 降级 |
+|---|---|
+| `subtitle` | 省略 `.subtitle` div（不要留空壳） |
+| `duration_total` | footer 只写"单人讲完 · 讲师名"，不写时长 |
+| `date` | `.top .meta` 只显示"第 N 节"或整体省略该 span |
+| `subtitle` + `duration_total` 都缺 | Cover 只保留 `.eyebrow` + `<h1>` + footer slogan，视觉上更空但干净 |
+
+### Divider
+
+| 字段缺失 | 降级 |
+|---|---|
+| `bridge` | `.bridge` div 整个**省略**（不留空引号，避免出现空引号框） |
+| `duration` | 去掉 `<span class="pill">⏱ N min</span>` |
+| `duration` + 后半段描述都缺 | 整个 `.meta-row` 省略 |
+| `speaker_strategy` | 元素上不写 `data-notes-strategy` attr |
+| `speaker_speak` | 不写 `data-notes-speak` attr |
+
+**注意**：`data-section` 和 `.ticks` 进度点**不能省**——进度条依赖它们；没 `number` 时按顺序自动编。
+
+### Break
+
+完全由 `section.is_break` 触发。**没有 break section 就不生成 break slide**，不要塞默认休息页。
+
+### Concept / Steps / Table
+
+| 字段缺失 | 降级 |
+|---|---|
+| `eyebrow` | 省略 `.eyebrow` div |
+| `ContentBlock.heading` 但有 body | `<h1>` 用本节 `section.heading`（降一级当标题用），eyebrow 显示"正文" |
+| `step_points` 为 false（或不存在） | **不加** `.stepped` class 和 `data-steps`，走一次全出版（`.compact`） |
+| 表格数据列 `description` 列空值 | 该单元格留空字符串，不要写"—"或"暂无"占位 |
+
+### Speaker Notes（所有 slide 通用）
+
+| 字段缺失 | 降级 |
+|---|---|
+| 两个都没 | 不写任何 `data-notes-*` attr。JS 侧已兼容：N 键召唤出备注栏时显示"本页无备注" |
+| 只有 speak 没有 strategy | 只写 `data-notes-speak` attr |
+| 只有 strategy 没有 speak | 只写 `data-notes-strategy` attr |
+
+### 整体时间条（底部 chrome）
+
+| 情况 | 降级 |
+|---|---|
+| 所有 section 都有 `duration` | 时间条正常显示总时长 + 已过刻度 |
+| 部分有部分没 | 把"有"的加总作为总时长，chrome 仍显示；Divider 侧按该节是否有 duration 决定 pill 出不出 |
+| 所有 section 都没 `duration` | 在 `.deck` 根节点加 `data-no-timeline="true"`；CSS 隐藏 `.chrome .timeline` |
+
+### 典型 tutorial 装配形态（全降级后）
+
+一份只有 `##` 章节和正文的教程，装配结果应当是：
+
+- ✅ Cover（标题取自 `# xxx`，无 subtitle，footer 只写"单人讲完"）
+- ✅ 每章 Divider（只有 `<h1>` + `.ticks`，没有 pill、没有 bridge、没有演讲者备注）
+- ✅ 章节内容页（concept / steps / table 正常出，视 body 类型而定）
+- ❌ 没有 Break
+- ❌ 底部没有时间条
+- ❌ 按 N 键提示"本页无备注"
+
+**这个形态是 skill 的合法输出，不要因为"看起来光秃秃"就去补假数据。**
