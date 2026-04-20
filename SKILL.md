@@ -35,7 +35,28 @@ description: 把 Markdown 课堂讲义（带节分、时长、节奏要点、讲
 
 如果讲义结构不清晰，先帮用户结构化（提取节、时长、要点），再走流程。
 
-## 工作流（严格四阶段，不能跳）
+## 快通道：按既定风格直接装配（默认就走这条）
+
+**前提**：用户已经跑过一次完整流程，或本仓库自带的 `assets/playground-templates/` + `assets/final-deck-example.html` 就是他想要的风格。这种情况下**不要**再拉采访和 4 轮 playground——那是浪费时间，用户会不耐烦。
+
+**触发条件**（满足任一即走快通道）：
+
+1. 用户明说"按老样子"、"按之前那套"、"直接装"、"不用问了"、"按我的来"之类
+2. 用户这次没换品牌（没提 logo / 主色 / slogan），且本 skill 自带的 `assets/final-deck-example.html` 的品牌就是他熟悉的那套（默认 AI Spark）
+3. 用户的仓库/讲义同级目录下已经有一份完工的 `*-PPT.html` 或 `playground/` 目录（说明风格已定）
+
+**做法**：
+
+1. 直接读 `assets/final-deck-example.html` 作为骨架（或用户指向的既有 `*-PPT.html`）——CSS tokens、JS controller、slide chrome 全部复用
+2. 读讲义 `.md`，按 `references/slide-templates.md` + `references/components.md` 生成每节 slide
+3. 装配成 `<lecture-name>-PPT.html`，用浏览器打开交付验收
+4. **只在开工前确认一句**："按你现有风格直接装配 → `xxx-PPT.html`，不走采访和 playground，可以？"——得到肯定回复就开干，否则掉头走下面的完整流程
+
+**不要做**：快通道里**不要**再摆 3 版封面/分隔让用户挑，**不要**再问长宽比/动画/组件样式——这些都定好了。采访只在用户明确要换风格或是第一次跑时才用。
+
+---
+
+## 完整工作流（第一次用 or 换风格时才走）
 
 ### 阶段 1 · 采访（约 4 组结构化提问）
 
@@ -149,7 +170,7 @@ description: 把 Markdown 课堂讲义（带节分、时长、节奏要点、讲
 - 不要让模型用第三方框架（reveal.js / Slidev / Tailwind CDN）
 - 不要在内容页面用整页深色底（只有代码块组件用 `#1a1d24`）
 - 不要加 emoji 装饰（除了休息页的 ☕ 🚶 这种功能性 icon、和组件 3 散乱状态里的 ⚠️📄）
-- 不要省略采访阶段直接生成（即使用户催，也要走完 4 轮 playground——这是 skill 的核心价值）
+- 不要在"第一次跑 + 新品牌"的情况下省略采访（这是 skill 的核心价值之一）；但如果命中上面的「快通道」触发条件，**必须**走快通道，别倒回来重新走 4 轮 playground
 - 不要把每轮 playground 一次性全部生成，要一轮一轮来
 - 不要在装配时把 deck-chrome / JS controller 重写——直接复用 `final-deck-example.html` 里的，那是验证过能用的
 
