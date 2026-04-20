@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================
+  LAYOUT · flow · 横向流程图（顺序点亮）
+  ---------------------------------------------------------------------
+  数据形状：3-5 个节点横向串联，中间用箭头连接；每节点短名 name +
+           短说明 desc；可选末尾再挂 1-2 个 `.future` 虚框节点表示
+           "后面可以加"
+  典型场景：工作流链路、pipeline、步骤串联、系统线性架构视图
+  关键机制：
+    - `.flow` 外层 flex:1 吃掉 h1 下方剩余空间、居中
+    - `.flow-row` 水平排列 node + arrow
+    - 参与"顺序点亮"的 node / arrow 都加 `data-lit-step="N"` 属性
+    - 节点默认 opacity 0.4 + scale(0.96)（暗态）；加 `.lit` 后变
+      品牌蓝边框 + brand-faint 底 + scale(1) + 辉光
+    - skeleton controller 的 `autoLightFlow()` 在 slide 激活且
+      **不是 stepped** 时自动按 DOM 顺序以 200ms + i*200ms 间隔
+      add `.lit`。箭头变品牌蓝 + 一道白光沿箭头滑过（动画在
+      `.flow-arrow.lit::before` 里）
+    - `.future` 变体（虚框灰字）**不加** data-lit-step，不参与
+      lit 序列，永远保持"未来"状态
+  ---------------------------------------------------------------------
+  本文件是 course-slides 的 layout preview gallery 一员：独立打开可
+  视化 1 张 flow 版式 slide，不是装配产物。
+
+  SKELETON base (tokens / deck shell / chrome / slide base / animation
+  primitives) 是从 assets/skeleton.html section 1-5 复制的子集；
+  flow 相关 CSS + JS 点亮逻辑也是从 skeleton 相关代码复制的子集；
+  skeleton 改动时需手动同步本文件。
+  ---------------------------------------------------------------------
+  装配期注意：
+  1. slide class 写 `content`（继承 .slide.content padding），**不要**
+     加 `.stepped`，否则 controller 不触发 autoLightFlow
+  2. 参与 lit 序列的每个 node / arrow 都要加 `data-lit-step="N"`；
+     没加的不会亮。值本身不决定顺序（controller 按 DOM 顺序），
+     但推荐递增编号便于阅读
+  3. 节点数量 3-5 个为宜。超过 5 节点 `min-width: 9cqw` 会挤窄或折行，
+     考虑横向两行或换 tree 型纵向排
+  4. node 里只放 `.name`（1 个短词，2-4 字）+ `.desc`（1 行简短说明，
+     可 mono 字体路径）；不要塞段落或多行文本
+  5. 有 `.future` 节点时，建议在 .flow 末尾加 `.flow-legend` 图例
+     说明"已搭通 / 后面可以加"，让观众看懂虚实对比
+  6. future 节点不加 data-lit-step，也不要 lit——它就该保持虚框灰色
+  =====================================================================
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>layout · flow</title>
+<style>
+/* ============================================================
+   SKELETON 基础（1. tokens + 2. deck shell + 3. chrome + 4. slide base + 5. animation primitives）
+   ============================================================ */
+:root {
+  --brand: #1E40FF;
+  --brand-soft: #EEF1FF;
+  --brand-faint: #F5F7FF;
+  --flame-1: #FFA92E;
+  --flame-2: #EF4D2A;
+  --flame-3: #C42138;
+  --ink: #0A0A0A;
+  --ink-2: #3A3A3C;
+  --muted: #8E8E93;
+  --muted-2: #C7C7CC;
+  --line: #E5E5EA;
+  --line-2: #F0F0F3;
+  --bg: #F5F5F7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body {
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+.deck {
+  width: min(100vw, calc(100vh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  background: white;
+  position: relative;
+  overflow: hidden;
+  container-type: inline-size;
+}
+.deck-progress {
+  position: absolute; top: 0; left: 0; right: 0; height: 0.18cqw;
+  background: var(--line-2); z-index: 50;
+}
+.deck-progress .fill {
+  height: 100%; background: var(--brand);
+  width: 48%;
+  transition: width 0.5s cubic-bezier(0.2, 0.65, 0.2, 1);
+}
+.deck-top {
+  position: absolute; top: 2.4cqw; left: 5cqw; right: 5cqw;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 1cqw; color: var(--muted); letter-spacing: 0.03em;
+  z-index: 49;
+  opacity: 1;
+}
+.deck-top .breadcrumb { display: flex; align-items: center; gap: 0.7cqw; color: var(--ink-2); }
+.deck-top .breadcrumb .sec { color: var(--brand); font-weight: 600; }
+.deck-top .breadcrumb .div { color: var(--muted-2); }
+.logo-mini { display: block; aspect-ratio: 100 / 110; height: auto; }
+.deck-top .breadcrumb .logo-mini { width: 1.4cqw; flex-shrink: 0; }
+.deck-top .pageno { font-feature-settings: "tnum"; color: var(--muted); }
+.deck-top .pageno b { color: var(--ink-2); font-weight: 600; }
+
+.slide {
+  position: absolute; inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+}
+.slide.active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 1;
+}
+.slide.content {
+  background: white;
+  padding: 8cqw 6cqw 5cqw;
+  display: flex; flex-direction: column;
+}
+.slide.content .eyebrow {
+  font-size: 1.1cqw; color: var(--brand); font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  margin-bottom: 1.3cqw;
+}
+.slide.content h1 {
+  font-size: 4.4cqw; font-weight: 700;
+  letter-spacing: -0.02em; line-height: 1.15;
+  margin-bottom: 2.4cqw;
+}
+.slide.content h1.smaller { font-size: 3.6cqw; }
+.slide.content h1 .accent {
+  background: linear-gradient(transparent 70%, var(--brand-soft) 70%);
+  padding: 0 0.05em;
+}
+
+.fade-up {
+  opacity: 0; transform: translateY(14px);
+  transition: opacity 0.85s cubic-bezier(0.2, 0.65, 0.2, 1),
+              transform 0.85s cubic-bezier(0.2, 0.65, 0.2, 1);
+}
+.slide.active.playing .fade-up { opacity: 1; transform: translateY(0); }
+.fade-in {
+  opacity: 0;
+  transition: opacity 0.85s cubic-bezier(0.2, 0.65, 0.2, 1);
+}
+.slide.active.playing .fade-in { opacity: 1; }
+.d1 { transition-delay: 0.10s; } .d2 { transition-delay: 0.30s; }
+.d3 { transition-delay: 0.50s; } .d4 { transition-delay: 0.70s; }
+.d5 { transition-delay: 0.90s; } .d6 { transition-delay: 1.10s; }
+.no-anim, .no-anim *, .no-anim *::before, .no-anim *::after { transition: none !important; }
+
+/* ============================================================
+   FLOW 版式专属
+   ============================================================ */
+.flow {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  padding: 2cqw 0;
+}
+.flow-row {
+  display: flex; align-items: center; justify-content: center; gap: 0;
+}
+.flow-node {
+  background: white;
+  border: 0.18cqw solid var(--line);
+  border-radius: 0.7cqw;
+  padding: 1.4cqw 1.7cqw;
+  text-align: center;
+  min-width: 9cqw;
+  transition: all 0.5s cubic-bezier(0.2, 0.65, 0.2, 1);
+  opacity: 0.4;
+  transform: scale(0.96);
+}
+.flow-node.lit {
+  border-color: var(--brand);
+  background: var(--brand-faint);
+  opacity: 1;
+  transform: scale(1);
+  box-shadow: 0 0.3cqw 1.2cqw rgba(30, 64, 255, 0.15);
+}
+.flow-node.future { border-style: dashed; color: var(--muted); }
+.flow-node.future.lit {
+  background: white;
+  border-color: var(--muted-2);
+  color: var(--muted);
+  box-shadow: none;
+}
+.flow-node .name {
+  font-size: 1.4cqw; font-weight: 700;
+  color: var(--ink); letter-spacing: -0.01em; line-height: 1.2;
+}
+.flow-node.lit .name { color: var(--brand); }
+.flow-node.future.lit .name { color: var(--muted); }
+.flow-node .desc {
+  font-size: 0.95cqw; color: var(--muted);
+  margin-top: 0.4cqw;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+.flow-arrow {
+  height: 0.25cqw;
+  flex: 0 0 2.4cqw;
+  background: var(--line); position: relative;
+  transition: background 0.5s ease;
+}
+.flow-arrow::after {
+  content: ''; position: absolute;
+  right: -0.4cqw; top: 50%; transform: translateY(-50%);
+  border: 0.45cqw solid transparent;
+  border-left-color: var(--line);
+  transition: border-left-color 0.5s ease;
+}
+.flow-arrow.lit { background: var(--brand); }
+.flow-arrow.lit::after { border-left-color: var(--brand); }
+.flow-arrow.lit::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; height: 100%; width: 30%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent);
+  animation: flow-light 1.4s linear infinite;
+}
+@keyframes flow-light {
+  0% { left: -30%; }
+  100% { left: 100%; }
+}
+.flow-arrow.future { border-top: 0.18cqw dashed var(--muted-2); background: transparent; }
+.flow-arrow.future::after { border-left-color: var(--muted-2); }
+.flow-legend {
+  margin-top: 2cqw;
+  display: flex; gap: 2cqw; align-items: center; justify-content: center;
+  font-size: 1cqw; color: var(--muted);
+}
+.flow-legend .swatch {
+  display: inline-block;
+  width: 1.1cqw; height: 0.6cqw; border-radius: 2px;
+  vertical-align: middle; margin-right: 0.3cqw;
+}
+.flow-legend .swatch.now { background: var(--brand); }
+.flow-legend .swatch.future { background: var(--line); border: 1px dashed var(--muted-2); }
+
+/* ============================================================
+   GLOBAL SLOGAN + WATERMARK（与 skeleton.html section 6 对齐）
+   ============================================================ */
+.deck-bottom {
+  position: absolute;
+  bottom: 1.8cqw; left: 0; right: 0;
+  text-align: center;
+  font-size: 0.9cqw;
+  color: var(--brand);
+  letter-spacing: 0.05em;
+  z-index: 49;
+  transition: opacity 0.3s ease;
+}
+.deck-bottom .brand { font-weight: 600; }
+.deck-bottom .sep { margin: 0 0.5em; opacity: 0.5; }
+.deck-bottom.hidden { opacity: 0; pointer-events: none; }
+
+.slide::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 550 130'><g fill='%230A0A0A'><path d='M 62 6 C 56 14 50 20 48 24 L 38 12 L 36 28 C 22 38 14 54 14 72 C 14 94 30 104 50 104 C 70 104 86 94 86 72 C 86 48 76 26 62 6 Z'/><text x='115' y='92' font-family='-apple-system,system-ui,sans-serif' font-weight='700' font-size='92' letter-spacing='-3'>AI Spark</text></g></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 41%;
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: -1;
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position: absolute;">
+  <symbol id="logo-flame" viewBox="0 0 100 110">
+    <linearGradient id="flameG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFA92E"/>
+      <stop offset=".55" stop-color="#EF4D2A"/>
+      <stop offset="1" stop-color="#C42138"/>
+    </linearGradient>
+    <linearGradient id="dropG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF2E1"/>
+      <stop offset="1" stop-color="#FCD9B8"/>
+    </linearGradient>
+    <path fill="url(#flameG)" stroke="white" stroke-width="6" stroke-linejoin="round" style="paint-order: stroke fill"
+          d="M 62 6 C 56 14 50 20 48 24 L 38 12 L 36 28 C 22 38 14 54 14 72 C 14 94 30 104 50 104 C 70 104 86 94 86 72 C 86 48 76 26 62 6 Z"/>
+    <path fill="url(#dropG)"
+          d="M 50 56 C 38 68 36 82 42 92 C 46 100 54 100 58 92 C 64 82 62 68 50 56 Z"/>
+  </symbol>
+</svg>
+
+<div class="deck">
+
+  <!-- chrome（breadcrumb / pageno / 进度条）值为演示目的硬编码，装配产物由 DECK CONTROLLER 动态填 -->
+  <div class="deck-progress"><div class="fill"></div></div>
+  <div class="deck-top">
+    <div class="breadcrumb">
+      <svg class="logo-mini"><use href="#logo-flame"/></svg>
+      <span class="sec">§N</span>
+      <span class="div">/</span>
+      <span>[节标题]</span>
+    </div>
+    <div class="pageno">页 <b>M</b> / X</div>
+  </div>
+
+  <div class="slide content">
+    <div class="eyebrow fade-up d1">[EYEBROW · 可选]</div>
+    <h1 class="fade-up d2 smaller">[流程主题 · 一句话说这条链路做什么]</h1>
+    <div class="flow">
+      <div>
+        <div class="flow-row">
+          <div class="flow-node" data-lit-step="1">
+            <div class="name">[节点一]</div>
+            <div class="desc">[短说明]</div>
+          </div>
+          <div class="flow-arrow" data-lit-step="2"></div>
+          <div class="flow-node" data-lit-step="3">
+            <div class="name">[节点二]</div>
+            <div class="desc">[短说明]</div>
+          </div>
+          <div class="flow-arrow" data-lit-step="4"></div>
+          <div class="flow-node" data-lit-step="5">
+            <div class="name">[节点三]</div>
+            <div class="desc">[短说明]</div>
+          </div>
+          <div class="flow-arrow future"></div>
+          <div class="flow-node future">
+            <div class="name">[未来节点]</div>
+            <div class="desc">[后面加]</div>
+          </div>
+        </div>
+        <div class="flow-legend fade-in d6">
+          <span><span class="swatch now"></span>已搭通</span>
+          <span><span class="swatch future"></span>后面可以加</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部 slogan 条（与 skeleton.html 同步） -->
+  <div class="deck-bottom">
+    <span class="brand">AI Spark</span>
+    <span class="sep">·</span>
+    <span>始于火花 成于实战</span>
+  </div>
+
+</div>
+
+<script>
+/* 循环播放：fade-up 入场 → autoLightFlow 顺序点亮 → 停顿 → 重置重播
+   这段逻辑复刻 assets/skeleton.html DECK CONTROLLER 里的
+   autoLightFlow() 行为（按 DOM 顺序 200ms + i*200ms 间隔加 .lit） */
+(function () {
+  const slide = document.querySelector('.slide');
+  const lits = slide.querySelectorAll('[data-lit-step]');
+
+  function play() {
+    slide.classList.add('no-anim');
+    slide.classList.remove('active', 'playing');
+    lits.forEach(el => el.classList.remove('lit'));
+    void slide.offsetWidth;
+    requestAnimationFrame(() => {
+      slide.classList.remove('no-anim');
+      requestAnimationFrame(() => {
+        slide.classList.add('active', 'playing');
+        lits.forEach((el, i) => {
+          setTimeout(() => el.classList.add('lit'), 200 + i * 200);
+        });
+      });
+    });
+  }
+
+  play();
+  // 总耗时 ≈ 入场 1s + lit 序列 1.2s (5 步 * 200ms + 200ms 起始) + 停顿 3.8s = 6s 循环
+  setInterval(play, 6000);
+})();
+</script>
+
+</body>
+</html>

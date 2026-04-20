@@ -79,10 +79,10 @@ skill **逐节扫描**，**不看标题符号**（§1 / 一、/ 1. / 纯 `## 标
 ## 装配
 
 1. 读 `assets/skeleton.html`，**整段 verbatim 拷入**最终 deck：
-   - `<style>` 里所有内容（CSS tokens / deck shell / chrome / slide base / animation primitives / notes / hotkey help / timer）—— 除了末尾 `SKELETON-ONLY · 占位 slide 样式` 那段，整段删掉
-   - `<body>` 里 `<symbol id="logo-flame">` + `.deck` 外壳 + `.deck-progress` + `.deck-top` + `.deck-timer`
+   - `<style>` 里所有内容（CSS tokens / deck shell / chrome / slide base / animation primitives / **section 6 global slogan + watermark** / notes / hotkey help / timer）—— 除了末尾 `SKELETON-ONLY · 占位 slide 样式` 那段，整段删掉
+   - `<body>` 里 `<symbol id="logo-flame">` + `.deck` 外壳 + `.deck-progress` + `.deck-top` + `.deck-timer` + `.deck-bottom`（底部 slogan 条）
    - `<body>` 末尾 `.notes` 浮层 + `.hotkey-help` 浮层
-   - `<script>` 里整段 DECK CONTROLLER
+   - `<script>` 里整段 DECK CONTROLLER（含 cover 页自动隐藏 `.deck-bottom` 逻辑）
    - 把 skeleton 里那张 `SKELETON-ONLY` 占位 slide 删掉
 2. 读 `assets/example-deck.html`，**只看不抄**：吸取版式思路（封面 / Divider / 休息页 / 步进页 / 表格 / 流程图 / 代码块的组织逻辑），但不要把里面任何版式-specific 的 CSS 或 HTML 结构照搬出来。每页版式按这节内容自由决定。
 3. 按 schema 生成每页 slide 插入 `.deck`：
@@ -90,6 +90,8 @@ skill **逐节扫描**，**不看标题符号**（§1 / 一、/ 1. / 纯 `## 标
    - 布局 / 信息密度 / 是否分步 / 用不用表格流程图 —— 按这节的内容决定，不受预设模板约束
    - 动画**不要重写**，复用骨架里 `.fade-up` / `.fade-in` / `.d1-.d8` / `.step` 这些 primitive class 就够；用法见 `references/animation-reference.md`
    - 必须遵守下面 4 条视觉底线
+   - 视觉上吃不准某类页怎么排时，翻 `assets/layouts/` 对应版式的 preview + 顶部注释"数据形状 / 典型场景 / 关键机制 / 装配期注意"定位；layouts/ 只是视觉参考不是装配模板，每页版式仍按内容自由设计
+   - **纯正文页规则**：如果一页是 eyebrow + h1 + 多段 body（可选 quote），slide class 要写 `content body`。`.body` 触发"quote 底部锚定"：quote 用 `margin-top: auto` 推到页面底部，段落顺着 fade-up 链从顶部展开。body 段数按内容自由选 2-6 段，**不要限制在 2 段**，内容充足时段落会自然撑满整页
 4. 首页必须有 logo + "AI Spark" 品牌名 + 讲义标题；末页必须有 End / Q&A
 5. 写入 `<source>-PPT.html`，浏览器打开验收
 
@@ -119,11 +121,14 @@ skill **逐节扫描**，**不看标题符号**（§1 / 一、/ 1. / 纯 `## 标
 - 不要在内容页用整页深色底（只有代码块组件用 `#1a1d24`）
 - 不要加装饰 emoji（除休息页 ☕ 🚶 和状态 icon ⚠️ 📄 这种功能性）
 - 不要重写 deck chrome / JS controller / 动画 primitive —— 直接复用 `skeleton.html` 里的，那是验证过能用的
+- 不要在每页 slide 里手写底部 slogan 条或背景水印 —— skeleton 的 `.deck-bottom`（品牌蓝 "AI Spark · 始于火花 成于实战"）和 `.slide::before`（flame + AI Spark 黑剪影水印，opacity 0.015）是 deck 级全局 chrome / bg，cover 页由 controller 自动隐藏 slogan 条（cover 自己 footer 有 slogan 位）
 
 ## 参考文件
 
 - `assets/skeleton.html` — 技术骨架（verbatim 拷入最终 deck）
 - `assets/example-deck.html` — 完整示例 deck（仅参考版式思路，不 copy）
+- `assets/layouts/index.html` — Layouts Gallery 入口，7 张 layout 缩略一览 + 锚点导航
+- `assets/layouts/<body|points|flow|table|cover|divider|break>.html` — 单版式 preview，可视化预览 + 顶部注释的数据形状 / 典型场景 / 关键机制 / 装配期注意（非装配模板，仅视觉参考）
 - `references/source-schema.md` — 输入字段 schema + 识别规则 + 降级策略
 - `references/design-system.md` — 品牌资产清单
 - `references/animation-reference.md` — 动画 primitive class 清单 + 核心技术技巧 + 合法例外 + 禁止清单

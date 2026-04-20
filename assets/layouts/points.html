@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================
+  LAYOUT · points · 并列要点（步进 reveal）
+  ---------------------------------------------------------------------
+  数据形状：3-6 条并列要点 / 规则 / 动作，每条有序号 + 小标题 + 描述
+  典型场景："三条规则"、"三个动作"、"四步拆解"
+  关键机制：.stepped + data-steps="K" + .step 子元素 + data-step="N"；
+           实际放映时按 → / Space 分步 reveal；本 demo 用 setInterval
+           模拟节奏。
+  ---------------------------------------------------------------------
+  本文件是 course-slides 的 layout preview gallery 一员：独立打开可
+  视化 1 张 points 版式 slide，不是装配产物。
+
+  SKELETON base (tokens / deck shell / chrome / slide base / animation
+  primitives) 是从 assets/skeleton.html section 1-5 复制的子集，
+  skeleton 改动时需手动同步本文件。
+  =====================================================================
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>layout · points</title>
+<style>
+/* ============================================================
+   SKELETON 基础（1. tokens + 2. deck shell + 3. chrome + 4. slide base + 5. animation primitives）
+   ============================================================ */
+:root {
+  --brand: #1E40FF;
+  --brand-soft: #EEF1FF;
+  --brand-faint: #F5F7FF;
+  --flame-1: #FFA92E;
+  --flame-2: #EF4D2A;
+  --flame-3: #C42138;
+  --ink: #0A0A0A;
+  --ink-2: #3A3A3C;
+  --muted: #8E8E93;
+  --muted-2: #C7C7CC;
+  --line: #E5E5EA;
+  --line-2: #F0F0F3;
+  --bg: #F5F5F7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body {
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+.deck {
+  width: min(100vw, calc(100vh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  background: white;
+  position: relative;
+  overflow: hidden;
+  container-type: inline-size;
+}
+.deck-progress {
+  position: absolute; top: 0; left: 0; right: 0; height: 0.18cqw;
+  background: var(--line-2); z-index: 50;
+}
+.deck-progress .fill {
+  height: 100%; background: var(--brand);
+  width: 55%;
+  transition: width 0.5s cubic-bezier(0.2, 0.65, 0.2, 1);
+}
+.deck-top {
+  position: absolute; top: 2.4cqw; left: 5cqw; right: 5cqw;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 1cqw; color: var(--muted); letter-spacing: 0.03em;
+  z-index: 49;
+  opacity: 1;
+}
+.deck-top .breadcrumb { display: flex; align-items: center; gap: 0.7cqw; color: var(--ink-2); }
+.deck-top .breadcrumb .sec { color: var(--brand); font-weight: 600; }
+.deck-top .breadcrumb .div { color: var(--muted-2); }
+.logo-mini { display: block; aspect-ratio: 100 / 110; height: auto; }
+.deck-top .breadcrumb .logo-mini { width: 1.4cqw; flex-shrink: 0; }
+.deck-top .pageno { font-feature-settings: "tnum"; color: var(--muted); }
+.deck-top .pageno b { color: var(--ink-2); font-weight: 600; }
+
+.slide {
+  position: absolute; inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+}
+.slide.active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 1;
+}
+.slide.content {
+  background: white;
+  padding: 8cqw 6cqw 5cqw;
+  display: flex; flex-direction: column;
+}
+.slide.content .eyebrow {
+  font-size: 1.1cqw; color: var(--brand); font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  margin-bottom: 1.3cqw;
+}
+.slide.content h1 {
+  font-size: 4.4cqw; font-weight: 700;
+  letter-spacing: -0.02em; line-height: 1.15;
+  margin-bottom: 2.4cqw;
+}
+.slide.content h1.smaller { font-size: 3.6cqw; }
+.slide.content h1 .accent {
+  background: linear-gradient(transparent 70%, var(--brand-soft) 70%);
+  padding: 0 0.05em;
+}
+
+.fade-up {
+  opacity: 0; transform: translateY(14px);
+  transition: opacity 0.85s cubic-bezier(0.2, 0.65, 0.2, 1),
+              transform 0.85s cubic-bezier(0.2, 0.65, 0.2, 1);
+}
+.slide.active.playing .fade-up { opacity: 1; transform: translateY(0); }
+.d1 { transition-delay: 0.10s; } .d2 { transition-delay: 0.30s; }
+.no-anim, .no-anim *, .no-anim *::before, .no-anim *::after { transition: none !important; }
+
+.step {
+  opacity: 0; transform: translateY(14px);
+  transition: opacity 0.6s cubic-bezier(0.2, 0.65, 0.2, 1),
+              transform 0.6s cubic-bezier(0.2, 0.65, 0.2, 1);
+}
+.step.revealed { opacity: 1; transform: translateY(0); }
+
+/* ============================================================
+   POINTS 版式专属
+   ============================================================ */
+.slide.points .items {
+  display: grid; grid-template-columns: 1fr; gap: 2cqw;
+}
+.slide.points .items.compact { gap: 1.4cqw; }
+.slide.points .item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2.4cqw;
+  align-items: baseline;
+  padding-bottom: 1.6cqw;
+  border-bottom: 1px solid var(--line);
+}
+.slide.points .items.compact .item { padding-bottom: 1cqw; }
+.slide.points .item:last-child { border-bottom: none; padding-bottom: 0; }
+.slide.points .item .num {
+  font-size: 4.4cqw; font-weight: 700;
+  color: var(--brand-soft); line-height: 0.9;
+  letter-spacing: -0.02em;
+  font-feature-settings: "tnum";
+  min-width: 5.5cqw;
+}
+.slide.points .items.compact .item .num { font-size: 3.4cqw; min-width: 4.5cqw; }
+.slide.points .item .text .head {
+  font-size: 2.1cqw; font-weight: 700;
+  color: var(--ink); letter-spacing: -0.01em;
+  margin-bottom: 0.5cqw; line-height: 1.25;
+}
+.slide.points .items.compact .item .text .head { font-size: 1.7cqw; margin-bottom: 0.3cqw; }
+.slide.points .item .text .desc {
+  font-size: 1.3cqw; color: var(--ink-2); line-height: 1.6;
+  max-width: 95%;
+}
+.slide.points .items.compact .item .text .desc { font-size: 1.15cqw; }
+.slide.points .item .text .desc code {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 1.1cqw;
+  background: var(--line-2); padding: 0.05cqw 0.3cqw; border-radius: 0.2cqw;
+}
+
+/* ============================================================
+   GLOBAL SLOGAN + WATERMARK（与 skeleton.html section 6 对齐）
+   ============================================================ */
+.deck-bottom {
+  position: absolute;
+  bottom: 1.8cqw; left: 0; right: 0;
+  text-align: center;
+  font-size: 0.9cqw;
+  color: var(--brand);
+  letter-spacing: 0.05em;
+  z-index: 49;
+  transition: opacity 0.3s ease;
+}
+.deck-bottom .brand { font-weight: 600; }
+.deck-bottom .sep { margin: 0 0.5em; opacity: 0.5; }
+.deck-bottom.hidden { opacity: 0; pointer-events: none; }
+
+.slide::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 550 130'><g fill='%230A0A0A'><path d='M 62 6 C 56 14 50 20 48 24 L 38 12 L 36 28 C 22 38 14 54 14 72 C 14 94 30 104 50 104 C 70 104 86 94 86 72 C 86 48 76 26 62 6 Z'/><text x='115' y='92' font-family='-apple-system,system-ui,sans-serif' font-weight='700' font-size='92' letter-spacing='-3'>AI Spark</text></g></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 41%;
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: -1;
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position: absolute;">
+  <symbol id="logo-flame" viewBox="0 0 100 110">
+    <linearGradient id="flameG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFA92E"/>
+      <stop offset=".55" stop-color="#EF4D2A"/>
+      <stop offset="1" stop-color="#C42138"/>
+    </linearGradient>
+    <linearGradient id="dropG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF2E1"/>
+      <stop offset="1" stop-color="#FCD9B8"/>
+    </linearGradient>
+    <path fill="url(#flameG)" stroke="white" stroke-width="6" stroke-linejoin="round" style="paint-order: stroke fill"
+          d="M 62 6 C 56 14 50 20 48 24 L 38 12 L 36 28 C 22 38 14 54 14 72 C 14 94 30 104 50 104 C 70 104 86 94 86 72 C 86 48 76 26 62 6 Z"/>
+    <path fill="url(#dropG)"
+          d="M 50 56 C 38 68 36 82 42 92 C 46 100 54 100 58 92 C 64 82 62 68 50 56 Z"/>
+  </symbol>
+</svg>
+
+<div class="deck">
+
+  <!-- chrome（breadcrumb / pageno / 进度条）值为演示目的硬编码，装配产物由 DECK CONTROLLER 动态填 -->
+  <div class="deck-progress"><div class="fill"></div></div>
+  <div class="deck-top">
+    <div class="breadcrumb">
+      <svg class="logo-mini"><use href="#logo-flame"/></svg>
+      <span class="sec">§N</span>
+      <span class="div">/</span>
+      <span>[节标题]</span>
+    </div>
+    <div class="pageno">页 <b>M</b> / X</div>
+  </div>
+
+  <div class="slide content points stepped" data-steps="3">
+    <div class="eyebrow fade-up d1">[EYEBROW]</div>
+    <h1 class="fade-up d2 smaller">[页面主标题 · 一句话说清本页讲什么]</h1>
+    <div class="items">
+      <div class="item step" data-step="1">
+        <div class="num">01</div>
+        <div class="text">
+          <div class="head">[要点一 · 小标题]</div>
+          <div class="desc">[要点一的描述，一到两句话说清楚。可以 <code>inline code</code>，也可以 <strong>加粗关键词</strong>。]</div>
+        </div>
+      </div>
+      <div class="item step" data-step="2">
+        <div class="num">02</div>
+        <div class="text">
+          <div class="head">[要点二 · 小标题]</div>
+          <div class="desc">[要点二的描述。]</div>
+        </div>
+      </div>
+      <div class="item step" data-step="3">
+        <div class="num">03</div>
+        <div class="text">
+          <div class="head">[要点三 · 小标题]</div>
+          <div class="desc">[要点三的描述。]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部 slogan 条（与 skeleton.html 同步） -->
+  <div class="deck-bottom">
+    <span class="brand">AI Spark</span>
+    <span class="sep">·</span>
+    <span>始于火花 成于实战</span>
+  </div>
+
+</div>
+
+<script>
+/* 循环播放：fade-up 入场 → 三步 reveal → 停顿 → 重播 */
+(function () {
+  const slide = document.querySelector('.slide');
+  const steps = slide.querySelectorAll('.step');
+
+  function play() {
+    // 重置
+    slide.classList.add('no-anim');
+    slide.classList.remove('active', 'playing');
+    steps.forEach(s => s.classList.remove('revealed'));
+    void slide.offsetWidth;
+    requestAnimationFrame(() => {
+      slide.classList.remove('no-anim');
+      requestAnimationFrame(() => {
+        slide.classList.add('active', 'playing');
+        // 入场后 1.4s 开始第一步 reveal，每步间隔 1.3s
+        steps.forEach((s, i) => {
+          setTimeout(() => s.classList.add('revealed'), 1400 + i * 1300);
+        });
+      });
+    });
+  }
+
+  play();
+  // 总耗时 ≈ 入场 1.2s + 三步 3.9s + 停顿 2.5s ≈ 7.6s，循环 8s
+  setInterval(play, 8000);
+})();
+</script>
+
+</body>
+</html>

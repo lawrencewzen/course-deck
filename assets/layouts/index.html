@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================
+  LAYOUTS GALLERY · 版式预览索引
+  ---------------------------------------------------------------------
+  course-slides 的 7 种 slide 版式各自一个 preview 文件。装配新 deck
+  时，吃不准某类页怎么排，翻对应 layout preview 看视觉效果 + 顶部
+  注释看机制说明即可。每页版式仍按内容自由设计，这里只是视觉参考
+  不是装配模板。
+
+  本文件：
+    · 锚点导航到 7 张 layout preview
+    · iframe 缩略图直接看效果
+    · 每张带一句"什么时候用"的简短说明
+  =====================================================================
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Layouts Gallery · course-slides</title>
+<style>
+:root {
+  --brand: #1E40FF;
+  --brand-soft: #EEF1FF;
+  --brand-faint: #F5F7FF;
+  --ink: #0A0A0A;
+  --ink-2: #3A3A3C;
+  --muted: #8E8E93;
+  --line: #E5E5EA;
+  --bg: #F5F5F7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.55;
+}
+.wrap {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 56px 32px 80px;
+}
+
+/* header */
+.hdr { margin-bottom: 40px; }
+.hdr .eyebrow {
+  font-size: 12px; color: var(--brand); font-weight: 600;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.hdr h1 {
+  font-size: 40px; font-weight: 700;
+  letter-spacing: -0.02em; line-height: 1.15;
+  margin-bottom: 14px;
+}
+.hdr .lead {
+  font-size: 16px; color: var(--ink-2); max-width: 720px;
+}
+.hdr .lead code {
+  background: white; border: 1px solid var(--line);
+  padding: 1px 6px; border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 13px;
+}
+
+/* anchor nav */
+.nav {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin: 28px 0 40px;
+}
+.nav a {
+  padding: 6px 14px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--ink-2);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+.nav a:hover {
+  background: var(--brand);
+  color: white;
+  border-color: var(--brand);
+}
+
+/* grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+  gap: 28px;
+}
+.card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
+  scroll-margin-top: 24px;
+}
+.card .thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  overflow: hidden;
+}
+.card iframe {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  border: 0;
+  pointer-events: none; /* 鼠标不干扰，点整卡翻页 */
+}
+.card .body {
+  padding: 18px 22px 22px;
+}
+.card .title-row {
+  display: flex; align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.card h2 {
+  font-size: 20px; font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.card .tag {
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.card .desc {
+  font-size: 14px; color: var(--ink-2);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+.card .when {
+  font-size: 12.5px; color: var(--muted);
+  display: block; margin-bottom: 14px;
+}
+.card .when::before {
+  content: '何时用 · ';
+  color: var(--brand);
+  font-weight: 600;
+}
+.card .open {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--brand);
+  text-decoration: none;
+  font-weight: 500;
+}
+.card .open:hover { text-decoration: underline; }
+.card .open::after { content: ' →'; }
+
+.foot {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--muted);
+}
+.foot a { color: var(--brand); text-decoration: none; }
+.foot a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="hdr">
+    <div class="eyebrow">AI Spark · course-slides</div>
+    <h1>Layouts Gallery · 版式预览索引</h1>
+    <p class="lead">
+      装配 deck 时吃不准某类页怎么排 → 翻对应 layout preview 看视觉效果 + 顶部注释看机制说明。
+      每页版式仍按内容自由设计，<code>assets/layouts/</code> 只是视觉参考，<strong>不是装配模板</strong>。
+    </p>
+    <nav class="nav">
+      <a href="#cover">cover</a>
+      <a href="#body">body</a>
+      <a href="#points">points</a>
+      <a href="#flow">flow</a>
+      <a href="#table">table</a>
+      <a href="#divider">divider</a>
+      <a href="#break">break</a>
+    </nav>
+  </header>
+
+  <div class="grid">
+
+    <section class="card" id="cover">
+      <div class="thumb"><iframe src="cover.html" loading="lazy"></iframe></div>
+      <div class="body">
+        <div class="title-row"><h2>cover</h2><span class="tag">slide cover</span></div>
+        <div class="desc">首页 / 末页封面。三段分布：顶 logo + 课次，中大号 h1 + subtitle，底 slogan + 讲师。</div>
+        <span class="when">课程首页、末页 Q&amp;A / End。chrome 自动隐藏，不用 data-no-chrome。</span>
+        <a class="open" href="cover.html">打开单页</a>
+      </div>
+    </section>
+
+    <section class="card" id="body">
+      <div class="thumb"><iframe src="body.html" loading="lazy"></iframe></div>
+      <div class="body">
+        <div class="title-row"><h2>body</h2><span class="tag">content body</span></div>
+        <div class="desc">文字密概念页。大标题 + 2-6 段 body 段落 + 可选引言块 <code>.quote</code>（<code>margin-top: auto</code> 固底）。</div>
+        <span class="when">章节开场白、核心观点、结论陈述、引语导入。一个观点讲透。</span>
+        <a class="open" href="body.html">打开单页</a>
+      </div>
+    </section>
+
+    <section class="card" id="points">
+      <div class="thumb"><iframe src="points.html" loading="lazy"></iframe></div>
+      <div class="body">
+        <div class="title-row"><h2>points</h2><span class="tag">content points stepped</span></div>
+        <div class="desc">要点列表。编号 / icon + 标题 + 描述的 2-5 条结构。走步进 reveal（<code>data-steps</code> + <code>.step.revealed</code>），按方向键逐条出现。</div>
+        <span class="when">三条规则、五个步骤、N 个要点。需要讲完一条再推下一条的场景。</span>
+        <a class="open" href="points.html">打开单页</a>
+      </div>
+    </section>
+
+    <section class="card" id="flow">
+      <div class="thumb"><iframe src="flow.html" loading="lazy"></iframe></div>
+      <div class="body">
+        <div class="title-row"><h2>flow</h2><span class="tag">slide content</span></div>
+        <div class="desc">流程图。节点 + 箭头的 DOM 顺序图。每个节点 <code>data-lit-step</code>，按 DOM 顺序 200ms 依次自动点亮。</div>
+        <span class="when">技术架构、流程链条、pipeline 步骤。无需步进交互，一口气亮完。</span>
+        <a class="open" href="flow.html">打开单页</a>
+      </div>
+    </section>
+
+    <section class="card" id="table">
+      <div class="thumb"><iframe src="table.html" loading="lazy"></iframe></div>
+      <div class="body">
+        <div class="title-row"><h2>table</h2><span class="tag">content table-page</span></div>
+        <div class="desc">对比表格。<code>thead</code> 品牌浅底，<code>col-name</code> / <code>col-stars</code> 列语义类名。3-6 行 × 3-5 列视野舒适。</div>
+        <span class="when">方案对比、评分矩阵、特性打勾表。数据而非叙述的场景。</span>
+        <a class="open" href="table.html">打开单页</a>
+      </div>
+    </section>
+
+    <section class="card" id="divider">
+      <div class="thumb"><iframe src="divider.html" loading="lazy"></iframe></div>
+      <div class="body">
+        <div class="title-row"><h2>divider</h2><span class="tag">slide divider</span></div>
+        <div class="desc">章节分隔。grid 三段：§N 大字 + bridge 承接句 + 底部 ticks 进度条。过渡页，无 chrome。</div>
+        <span class="when">章节与章节之间、mental reset、给听众一次呼吸。</span>
+        <a class="open" href="divider.html">打开单页</a>
+      </div>
+    </section>
+
+    <section class="card" id="break">
+      <div class="thumb"><iframe src="break.html" loading="lazy"></iframe></div>
+      <div class="body">
+        <div class="title-row"><h2>break</h2><span class="tag">slide break</span></div>
+        <div class="desc">休息页。浅蓝底（<code>--brand-faint</code> 唯一例外）· icon + label + h1 + duration + hint。居中 flex。</div>
+        <span class="when">茶歇、午休、演练中断。写明几分钟后回来做什么。</span>
+        <a class="open" href="break.html">打开单页</a>
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="foot">
+    SKELETON 技术骨架见 <a href="../skeleton.html">assets/skeleton.html</a>（装配时整段拷）。
+    多版式组合示例见 <a href="../example-deck.html">assets/example-deck.html</a>（只看版式思路，不抄版式 CSS）。
+  </footer>
+
+</div>
+
+</body>
+</html>

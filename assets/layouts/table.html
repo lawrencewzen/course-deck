@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================
+  LAYOUT · table · 结构化对照表
+  ---------------------------------------------------------------------
+  数据形状：2-4 列 × 3-6 行对照数据，每行一个项，列是维度
+  典型场景：工具对比、选项对照、字段说明表、难度分级、依赖清单
+  关键机制：继承 .slide.content 的 padding / eyebrow / h1；加 table-page
+           class 打开表格样式。thead 品牌浅底 + 品牌色文字 + 底边框；
+           tbody 每行下边框、最后一行无边框；整表 fade-in（不分行 step）。
+           可选列样式：
+             - td.col-name   首列代码 / 路径 / 术语（mono 字体 + 黑加粗）
+             - td.col-stars  评分列（品牌蓝加粗，放 ★★★ 这类短符号）
+  ---------------------------------------------------------------------
+  本文件是 course-slides 的 layout preview gallery 一员：独立打开可
+  视化 1 张 table 版式 slide，不是装配产物。
+
+  SKELETON base (tokens / deck shell / chrome / slide base / animation
+  primitives) 是从 assets/skeleton.html section 1-5 复制的子集，
+  skeleton 改动时需手动同步本文件。
+  ---------------------------------------------------------------------
+  装配期注意：
+  1. slide class 写 `content table-page`（依赖 .slide.content 的 padding
+     + eyebrow + h1；**不要再加** .body，那是正文页专用）
+  2. 行数硬上限 ~6 行（含 thead）。7+ 行考虑拆页、删列、或降字号
+  3. 用 `<th style="width: N%;">` 显式设列宽避免某列撑爆；首列和窄列
+     （如"难度"、"状态"）尤其需要
+  4. col-name / col-stars 是**可选**提示类，按列语义用：col-name 给
+     代码 / 路径 / 命名类术语，col-stars 给评分 / 等级列。不是必需
+  5. 整表 fade-in（一次显全），不分行 stepped。除非 10+ 行需要分段
+     展示才考虑给 tr 加 .step（罕见）
+  6. h1 下可选 `.sub` 一句话说明"这张表说什么"；不需要时整段删掉
+  =====================================================================
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>layout · table</title>
+<style>
+/* ============================================================
+   SKELETON 基础（1. tokens + 2. deck shell + 3. chrome + 4. slide base + 5. animation primitives）
+   ============================================================ */
+:root {
+  --brand: #1E40FF;
+  --brand-soft: #EEF1FF;
+  --brand-faint: #F5F7FF;
+  --flame-1: #FFA92E;
+  --flame-2: #EF4D2A;
+  --flame-3: #C42138;
+  --ink: #0A0A0A;
+  --ink-2: #3A3A3C;
+  --muted: #8E8E93;
+  --muted-2: #C7C7CC;
+  --line: #E5E5EA;
+  --line-2: #F0F0F3;
+  --bg: #F5F5F7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body {
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+.deck {
+  width: min(100vw, calc(100vh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  background: white;
+  position: relative;
+  overflow: hidden;
+  container-type: inline-size;
+}
+.deck-progress {
+  position: absolute; top: 0; left: 0; right: 0; height: 0.18cqw;
+  background: var(--line-2); z-index: 50;
+}
+.deck-progress .fill {
+  height: 100%; background: var(--brand);
+  width: 68%;
+  transition: width 0.5s cubic-bezier(0.2, 0.65, 0.2, 1);
+}
+.deck-top {
+  position: absolute; top: 2.4cqw; left: 5cqw; right: 5cqw;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 1cqw; color: var(--muted); letter-spacing: 0.03em;
+  z-index: 49;
+  opacity: 1;
+}
+.deck-top .breadcrumb { display: flex; align-items: center; gap: 0.7cqw; color: var(--ink-2); }
+.deck-top .breadcrumb .sec { color: var(--brand); font-weight: 600; }
+.deck-top .breadcrumb .div { color: var(--muted-2); }
+.logo-mini { display: block; aspect-ratio: 100 / 110; height: auto; }
+.deck-top .breadcrumb .logo-mini { width: 1.4cqw; flex-shrink: 0; }
+.deck-top .pageno { font-feature-settings: "tnum"; color: var(--muted); }
+.deck-top .pageno b { color: var(--ink-2); font-weight: 600; }
+
+.slide {
+  position: absolute; inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+}
+.slide.active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 1;
+}
+.slide.content {
+  background: white;
+  padding: 8cqw 6cqw 5cqw;
+  display: flex; flex-direction: column;
+}
+.slide.content .eyebrow {
+  font-size: 1.1cqw; color: var(--brand); font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  margin-bottom: 1.3cqw;
+}
+.slide.content h1 {
+  font-size: 4.4cqw; font-weight: 700;
+  letter-spacing: -0.02em; line-height: 1.15;
+  margin-bottom: 2.4cqw;
+}
+.slide.content h1.smaller { font-size: 3.6cqw; }
+.slide.content h1 .accent {
+  background: linear-gradient(transparent 70%, var(--brand-soft) 70%);
+  padding: 0 0.05em;
+}
+
+.fade-up {
+  opacity: 0; transform: translateY(14px);
+  transition: opacity 0.85s cubic-bezier(0.2, 0.65, 0.2, 1),
+              transform 0.85s cubic-bezier(0.2, 0.65, 0.2, 1);
+}
+.slide.active.playing .fade-up { opacity: 1; transform: translateY(0); }
+.fade-in {
+  opacity: 0;
+  transition: opacity 0.85s cubic-bezier(0.2, 0.65, 0.2, 1);
+}
+.slide.active.playing .fade-in { opacity: 1; }
+.d1 { transition-delay: 0.10s; } .d2 { transition-delay: 0.30s; }
+.d3 { transition-delay: 0.50s; } .d4 { transition-delay: 0.70s; }
+.no-anim, .no-anim *, .no-anim *::before, .no-anim *::after { transition: none !important; }
+
+/* ============================================================
+   TABLE 版式专属
+   ============================================================ */
+.slide.table-page .sub {
+  font-size: 1.4cqw; color: var(--ink-2); line-height: 1.5;
+  margin-bottom: 2.4cqw; max-width: 90%;
+}
+.slide.table-page table {
+  width: 100%; border-collapse: collapse;
+  font-size: 1.45cqw; background: white;
+}
+.slide.table-page thead th {
+  background: var(--brand-faint); color: var(--brand); font-weight: 600;
+  text-align: left; padding: 1.2cqw 1.4cqw;
+  font-size: 1.2cqw; letter-spacing: 0.04em;
+  border-bottom: 0.15cqw solid var(--brand);
+}
+.slide.table-page tbody td {
+  padding: 1.3cqw 1.4cqw;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-2);
+  line-height: 1.5;
+  vertical-align: top;
+}
+.slide.table-page tbody tr:last-child td { border-bottom: none; }
+.slide.table-page tbody td.col-name {
+  color: var(--ink); font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
+  font-size: 1.3cqw;
+}
+.slide.table-page tbody td.col-stars {
+  color: var(--brand); font-weight: 600; font-size: 1.3cqw;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   GLOBAL SLOGAN + WATERMARK（与 skeleton.html section 6 对齐）
+   ============================================================ */
+.deck-bottom {
+  position: absolute;
+  bottom: 1.8cqw; left: 0; right: 0;
+  text-align: center;
+  font-size: 0.9cqw;
+  color: var(--brand);
+  letter-spacing: 0.05em;
+  z-index: 49;
+  transition: opacity 0.3s ease;
+}
+.deck-bottom .brand { font-weight: 600; }
+.deck-bottom .sep { margin: 0 0.5em; opacity: 0.5; }
+.deck-bottom.hidden { opacity: 0; pointer-events: none; }
+
+.slide::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 550 130'><g fill='%230A0A0A'><path d='M 62 6 C 56 14 50 20 48 24 L 38 12 L 36 28 C 22 38 14 54 14 72 C 14 94 30 104 50 104 C 70 104 86 94 86 72 C 86 48 76 26 62 6 Z'/><text x='115' y='92' font-family='-apple-system,system-ui,sans-serif' font-weight='700' font-size='92' letter-spacing='-3'>AI Spark</text></g></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 41%;
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: -1;
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position: absolute;">
+  <symbol id="logo-flame" viewBox="0 0 100 110">
+    <linearGradient id="flameG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFA92E"/>
+      <stop offset=".55" stop-color="#EF4D2A"/>
+      <stop offset="1" stop-color="#C42138"/>
+    </linearGradient>
+    <linearGradient id="dropG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF2E1"/>
+      <stop offset="1" stop-color="#FCD9B8"/>
+    </linearGradient>
+    <path fill="url(#flameG)" stroke="white" stroke-width="6" stroke-linejoin="round" style="paint-order: stroke fill"
+          d="M 62 6 C 56 14 50 20 48 24 L 38 12 L 36 28 C 22 38 14 54 14 72 C 14 94 30 104 50 104 C 70 104 86 94 86 72 C 86 48 76 26 62 6 Z"/>
+    <path fill="url(#dropG)"
+          d="M 50 56 C 38 68 36 82 42 92 C 46 100 54 100 58 92 C 64 82 62 68 50 56 Z"/>
+  </symbol>
+</svg>
+
+<div class="deck">
+
+  <!-- chrome（breadcrumb / pageno / 进度条）值为演示目的硬编码，装配产物由 DECK CONTROLLER 动态填 -->
+  <div class="deck-progress"><div class="fill"></div></div>
+  <div class="deck-top">
+    <div class="breadcrumb">
+      <svg class="logo-mini"><use href="#logo-flame"/></svg>
+      <span class="sec">§N</span>
+      <span class="div">/</span>
+      <span>[节标题]</span>
+    </div>
+    <div class="pageno">页 <b>M</b> / X</div>
+  </div>
+
+  <div class="slide content table-page">
+    <div class="eyebrow fade-up d1">[EYEBROW · 可选]</div>
+    <h1 class="fade-up d2 smaller">[表格主题 · 一句话说清比什么 / 列什么]</h1>
+    <div class="sub fade-up d3">[可选 · 一句副标题，说明这张表想传达的核心结论。不需要时整段删掉。]</div>
+    <table class="fade-in d4">
+      <thead>
+        <tr>
+          <th style="width: 24%;">[第一列]</th>
+          <th>[第二列 · 说明]</th>
+          <th style="width: 16%;">[第三列 · 短]</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-name">[item-a]</td>
+          <td>[第一行的说明。可以 2-3 句。col-name 会自动带 mono 字体 + 黑色加粗，适合放代码 / 路径 / 命名。]</td>
+          <td class="col-stars">★</td>
+        </tr>
+        <tr>
+          <td class="col-name">[item-b]</td>
+          <td>[第二行的说明。col-stars 品牌蓝加粗，适合放评分、等级、短符号。]</td>
+          <td class="col-stars">★★</td>
+        </tr>
+        <tr>
+          <td class="col-name">[item-c]</td>
+          <td>[第三行。]</td>
+          <td class="col-stars">★★★</td>
+        </tr>
+        <tr>
+          <td class="col-name">[item-d]</td>
+          <td>[第四行。3-6 行为宜，超过字号要降。]</td>
+          <td class="col-stars">★★★★</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 底部 slogan 条（与 skeleton.html 同步） -->
+  <div class="deck-bottom">
+    <span class="brand">AI Spark</span>
+    <span class="sep">·</span>
+    <span>始于火花 成于实战</span>
+  </div>
+
+</div>
+
+<script>
+/* 循环播放：fade-up 标题 → fade-in 表 → 停顿 → 重播 */
+(function () {
+  const slide = document.querySelector('.slide');
+
+  function play() {
+    slide.classList.add('no-anim');
+    slide.classList.remove('active', 'playing');
+    void slide.offsetWidth;
+    requestAnimationFrame(() => {
+      slide.classList.remove('no-anim');
+      requestAnimationFrame(() => {
+        slide.classList.add('active', 'playing');
+      });
+    });
+  }
+
+  play();
+  // 总耗时 ≈ d4 delay 0.7s + transition 0.85s = 1.55s 入场 + 4.45s 停顿 = 6s 循环
+  setInterval(play, 6000);
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================
+  LAYOUT · cover · 首页 / 末页封面
+  ---------------------------------------------------------------------
+  数据形状：三段 —
+           顶部 top：logo + 品牌名 + 课次 / 日期
+           中部 center：eyebrow + 大号 h1（可多行）+ subtitle
+           底部 footer：slogan + 讲师信息
+  典型场景：首页（课程标题 + 副标题）、末页（End / Q&A）
+  关键机制：
+    - `.slide.cover` 自带 flex-direction: column + justify-content:
+      space-between 三段分布
+    - chrome（顶部 breadcrumb + pageno）**自动隐藏**：skeleton
+      controller 的 `isCover` 判断，cover slide 不显 chrome，
+      不用再加 data-no-chrome="true"
+    - h1 字号 7.4cqw（全 deck 最大）；可一行也可多行，每行用
+      `<div class="fade-up dN">` 包以独立入场延迟
+    - `.accent` 下划线：`.accent::after` 粗品牌色杠，playing 时
+      scaleX(0→1) 1s 动画，延迟 1s（等 h1 入场完再划）
+  ---------------------------------------------------------------------
+  本文件是 course-slides 的 layout preview gallery 一员：独立打开可
+  视化 1 张 cover 版式 slide，不是装配产物。
+
+  SKELETON base (tokens / deck shell / chrome / slide base / animation
+  primitives) 是从 assets/skeleton.html section 1-5 复制的子集，
+  skeleton 改动时需手动同步本文件。
+  ---------------------------------------------------------------------
+  装配期注意：
+  1. slide class 写 `slide cover`。chrome 自动隐藏（controller 的
+     `isCover` 判断），**不需要**额外加 data-no-chrome="true"
+  2. 首页必须有 logo + "AI Spark" 品牌名 + 课程标题；末页必须有
+     End / Q & A（视觉底线第 4 条）。首末两页结构完全相同，只换文案
+  3. h1 多行时每行用 `<div class="fade-up dN">` 包，控制逐行入场节奏。
+     单行就一个 h1 不用嵌 div
+  4. `.accent` 只标在 h1 里**一个**最想强调的词上，下划线动画自动跑。
+     用多次会显得花
+  5. subtitle 是一句副标题（课程副述 / 作业提示），不要写多段
+  6. top meta 放课次 / 日期；footer 左 slogan、右讲师或其他
+  7. 末页相对首页只改文案：eyebrow 通常改成 "End · Q & A"；h1 改成
+     "下课了 / 该动手了" 或"谢谢 / 再见"这种；其余保留
+  =====================================================================
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>layout · cover</title>
+<style>
+/* ============================================================
+   SKELETON 基础（1. tokens + 2. deck shell + 3. chrome + 4. slide base + 5. animation primitives）
+   ============================================================ */
+:root {
+  --brand: #1E40FF;
+  --brand-soft: #EEF1FF;
+  --brand-faint: #F5F7FF;
+  --flame-1: #FFA92E;
+  --flame-2: #EF4D2A;
+  --flame-3: #C42138;
+  --ink: #0A0A0A;
+  --ink-2: #3A3A3C;
+  --muted: #8E8E93;
+  --muted-2: #C7C7CC;
+  --line: #E5E5EA;
+  --line-2: #F0F0F3;
+  --bg: #F5F5F7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body {
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+.deck {
+  width: min(100vw, calc(100vh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  background: white;
+  position: relative;
+  overflow: hidden;
+  container-type: inline-size;
+}
+/* cover 不显 chrome，这里把 chrome 整个隐掉（skeleton controller 里是自动判 isCover） */
+
+.logo-mini { display: block; aspect-ratio: 100 / 110; height: auto; }
+
+.slide {
+  position: absolute; inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+}
+.slide.active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.fade-up {
+  opacity: 0; transform: translateY(14px);
+  transition: opacity 0.85s cubic-bezier(0.2, 0.65, 0.2, 1),
+              transform 0.85s cubic-bezier(0.2, 0.65, 0.2, 1);
+}
+.slide.active.playing .fade-up { opacity: 1; transform: translateY(0); }
+.d1 { transition-delay: 0.10s; } .d2 { transition-delay: 0.30s; }
+.d3 { transition-delay: 0.50s; } .d4 { transition-delay: 0.70s; }
+.d5 { transition-delay: 0.90s; } .d6 { transition-delay: 1.10s; }
+.no-anim, .no-anim *, .no-anim *::before, .no-anim *::after { transition: none !important; }
+
+/* ============================================================
+   COVER 版式专属
+   ============================================================ */
+.slide.cover {
+  background: white;
+  padding: 5cqw 6cqw;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.slide.cover .top {
+  display: flex; align-items: center; gap: 0.9cqw;
+}
+.slide.cover .top svg.logo-mini { width: 2.4cqw; }
+.slide.cover .top .brand {
+  font-size: 1.15cqw; color: var(--ink-2);
+  letter-spacing: 0.02em; font-weight: 500;
+}
+.slide.cover .top .sep {
+  color: var(--muted); font-size: 1.15cqw; margin: 0 0.3cqw;
+}
+.slide.cover .top .meta {
+  font-size: 1.15cqw; color: var(--muted);
+}
+.slide.cover .center {
+  flex: 1;
+  display: flex; flex-direction: column; justify-content: center;
+  margin-top: -3cqw;
+}
+.slide.cover .eyebrow {
+  font-size: 1.3cqw;
+  color: var(--brand);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  margin-bottom: 1.6cqw;
+  text-transform: uppercase;
+}
+.slide.cover h1 {
+  font-size: 7.4cqw;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--ink);
+}
+.slide.cover h1 .accent { position: relative; display: inline-block; }
+.slide.cover h1 .accent::after {
+  content: ''; position: absolute;
+  left: 0; right: 0; bottom: -0.4cqw;
+  height: 0.5cqw; background: var(--brand);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 1s cubic-bezier(0.2, 0.65, 0.2, 1) 1.0s;
+}
+.slide.cover.active.playing h1 .accent::after { transform: scaleX(1); }
+.slide.cover .subtitle {
+  margin-top: 2cqw;
+  font-size: 1.7cqw;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.slide.cover .footer {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  font-size: 1.1cqw; color: var(--muted);
+}
+.slide.cover .footer .slogan {
+  color: var(--ink-2); font-weight: 500; letter-spacing: 0.05em;
+}
+
+/* ============================================================
+   GLOBAL SLOGAN + WATERMARK（与 skeleton.html section 6 对齐）
+   cover 页 .deck-bottom 默认带 hidden：cover 自己 footer 已有 slogan 位
+   ============================================================ */
+.deck-bottom {
+  position: absolute;
+  bottom: 1.8cqw; left: 0; right: 0;
+  text-align: center;
+  font-size: 0.9cqw;
+  color: var(--brand);
+  letter-spacing: 0.05em;
+  z-index: 49;
+  transition: opacity 0.3s ease;
+}
+.deck-bottom .brand { font-weight: 600; }
+.deck-bottom .sep { margin: 0 0.5em; opacity: 0.5; }
+.deck-bottom.hidden { opacity: 0; pointer-events: none; }
+
+.slide::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 550 130'><g fill='%230A0A0A'><path d='M 62 6 C 56 14 50 20 48 24 L 38 12 L 36 28 C 22 38 14 54 14 72 C 14 94 30 104 50 104 C 70 104 86 94 86 72 C 86 48 76 26 62 6 Z'/><text x='115' y='92' font-family='-apple-system,system-ui,sans-serif' font-weight='700' font-size='92' letter-spacing='-3'>AI Spark</text></g></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 41%;
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: -1;
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position: absolute;">
+  <symbol id="logo-flame" viewBox="0 0 100 110">
+    <linearGradient id="flameG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFA92E"/>
+      <stop offset=".55" stop-color="#EF4D2A"/>
+      <stop offset="1" stop-color="#C42138"/>
+    </linearGradient>
+    <linearGradient id="dropG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF2E1"/>
+      <stop offset="1" stop-color="#FCD9B8"/>
+    </linearGradient>
+    <path fill="url(#flameG)" stroke="white" stroke-width="6" stroke-linejoin="round" style="paint-order: stroke fill"
+          d="M 62 6 C 56 14 50 20 48 24 L 38 12 L 36 28 C 22 38 14 54 14 72 C 14 94 30 104 50 104 C 70 104 86 94 86 72 C 86 48 76 26 62 6 Z"/>
+    <path fill="url(#dropG)"
+          d="M 50 56 C 38 68 36 82 42 92 C 46 100 54 100 58 92 C 64 82 62 68 50 56 Z"/>
+  </symbol>
+</svg>
+
+<div class="deck">
+
+  <!-- cover slide 不显示 chrome（breadcrumb / pageno / 进度条），本 preview 里直接不渲染 -->
+
+  <div class="slide cover">
+    <div class="top fade-up d1">
+      <svg class="logo-mini"><use href="#logo-flame"/></svg>
+      <span class="brand">AI Spark</span>
+      <span class="sep">·</span>
+      <span class="meta">[课次 / 日期]</span>
+    </div>
+    <div class="center">
+      <div class="eyebrow fade-up d2">[EYEBROW · 英文 tagline]</div>
+      <h1>
+        <div class="fade-up d3">[主标题第一行]</div>
+        <div class="fade-up d4">[主标题第二行<span class="accent">关键词</span>]</div>
+      </h1>
+      <div class="subtitle fade-up d5">[副标题 · 一句话说这节课讲什么、下课能带走什么]</div>
+    </div>
+    <div class="footer fade-up d6">
+      <span class="slogan">[slogan · 品牌口号]</span>
+      <span>[时长 · 讲师 · 其他元信息]</span>
+    </div>
+  </div>
+
+  <!-- 底部 slogan 条：cover 页默认 hidden，cover 自己 footer 已有 slogan 位 -->
+  <div class="deck-bottom hidden">
+    <span class="brand">AI Spark</span>
+    <span class="sep">·</span>
+    <span>始于火花 成于实战</span>
+  </div>
+
+</div>
+
+<script>
+/* 循环播放：fade-up d1-d6 链入场 → accent 下划线划过 → 停顿 → 重播 */
+(function () {
+  const slide = document.querySelector('.slide');
+
+  function play() {
+    slide.classList.add('no-anim');
+    slide.classList.remove('active', 'playing');
+    void slide.offsetWidth;
+    requestAnimationFrame(() => {
+      slide.classList.remove('no-anim');
+      requestAnimationFrame(() => {
+        slide.classList.add('active', 'playing');
+      });
+    });
+  }
+
+  play();
+  // 总耗时 ≈ d6 delay 1.1s + transition 0.85s = 1.95s 入场 + accent 下划线
+  // 延迟 1s + 1s scaleX = 2s（与 d6 并行），合计 ~2s 后全部落位 + 5s 停顿 = 7s 循环
+  setInterval(play, 7000);
+})();
+</script>
+
+</body>
+</html>

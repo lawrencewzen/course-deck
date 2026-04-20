@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================
+  LAYOUT · break · 休息页（中场 / 小休息）
+  ---------------------------------------------------------------------
+  数据形状：居中四段 —
+           icon：大号 emoji（☕ / 🚶 / 🍵 / 🧘 等）
+           label：小字全大写品牌色标签（"中场休息" / "小休息"）
+           h1：大号主句（"喝水 · 走动 · 问个小问题"这类）
+           duration：时长（"10 min" / "5 min"）
+           hint：一句提示，宽度不超过 60%
+  典型场景：长课中场、环节切换、部署等待等需要停顿的点
+  关键机制：
+    - 全 deck 唯一一种用 `--brand-faint` 浅蓝底的 slide（与白底主流区分）
+    - `.slide.break` 自带 flex 居中 + text-align: center，四段自然叠
+    - chrome 隐掉：装配时 slide 上加 `data-no-chrome="true"`，
+      skeleton controller 的 chrome 隐藏逻辑会吃这个标记
+    - 入场用 d1→d5 fade-up 链，icon 最先、hint 最后
+  ---------------------------------------------------------------------
+  本文件是 course-slides 的 layout preview gallery 一员：独立打开可
+  视化 1 张 break 版式 slide，不是装配产物。
+
+  SKELETON base (tokens / deck shell / chrome / slide base / animation
+  primitives) 是从 assets/skeleton.html section 1-5 复制的子集，
+  skeleton 改动时需手动同步本文件。
+  ---------------------------------------------------------------------
+  装配期注意：
+  1. slide class 写 `slide break`
+  2. slide 上**必须**加 `data-no-chrome="true"`，让 breadcrumb / pageno
+     不出现。`data-section="0"`（不计入分段编号）、`data-section-name`
+     用"中场休息"/"小休息"这种短标签
+  3. icon 选一个恰当 emoji 就行，不要多个叠；纯文本 emoji 最稳
+  4. label 是小字全大写风格（"中场休息"/"BREAK · 10 MIN"），
+     h1 是大号主句，两者不要写成同一个内容
+  5. duration 一行搞定（"10 min"），不要补单位解释
+  6. hint 是一句温度提示，不超过 60% 宽度（CSS 里 max-width 已限），
+     解释"为什么休息 / 回来做什么"。**不要**把议程塞进 hint
+  =====================================================================
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>layout · break</title>
+<style>
+/* ============================================================
+   SKELETON 基础（1. tokens + 2. deck shell + 4. slide base + 5. animation primitives）
+   break 不显 chrome，section 3 整段省略
+   ============================================================ */
+:root {
+  --brand: #1E40FF;
+  --brand-soft: #EEF1FF;
+  --brand-faint: #F5F7FF;
+  --flame-1: #FFA92E;
+  --flame-2: #EF4D2A;
+  --flame-3: #C42138;
+  --ink: #0A0A0A;
+  --ink-2: #3A3A3C;
+  --muted: #8E8E93;
+  --muted-2: #C7C7CC;
+  --line: #E5E5EA;
+  --line-2: #F0F0F3;
+  --bg: #F5F5F7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body {
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+.deck {
+  width: min(100vw, calc(100vh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  background: white;
+  position: relative;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.slide {
+  position: absolute; inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+}
+.slide.active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.fade-up {
+  opacity: 0; transform: translateY(14px);
+  transition: opacity 0.85s cubic-bezier(0.2, 0.65, 0.2, 1),
+              transform 0.85s cubic-bezier(0.2, 0.65, 0.2, 1);
+}
+.slide.active.playing .fade-up { opacity: 1; transform: translateY(0); }
+.d1 { transition-delay: 0.10s; } .d2 { transition-delay: 0.30s; }
+.d3 { transition-delay: 0.50s; } .d4 { transition-delay: 0.70s; }
+.d5 { transition-delay: 0.90s; } .d6 { transition-delay: 1.10s; }
+.no-anim, .no-anim *, .no-anim *::before, .no-anim *::after { transition: none !important; }
+
+/* ============================================================
+   BREAK 版式专属
+   ============================================================ */
+.slide.break {
+  background: var(--brand-faint);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: 5cqw;
+}
+.slide.break .icon { font-size: 8cqw; line-height: 1; margin-bottom: 1.6cqw; }
+.slide.break .label {
+  font-size: 1.2cqw; color: var(--brand); font-weight: 600;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  margin-bottom: 1cqw;
+}
+.slide.break h1 {
+  font-size: 6cqw; font-weight: 700;
+  letter-spacing: -0.02em; line-height: 1.1;
+  margin-bottom: 1.6cqw;
+}
+.slide.break .duration {
+  font-size: 2cqw; color: var(--ink-2); font-weight: 500;
+  margin-bottom: 2.4cqw;
+}
+.slide.break .hint {
+  font-size: 1.3cqw; color: var(--muted); line-height: 1.6;
+  max-width: 60%;
+}
+
+/* ============================================================
+   GLOBAL SLOGAN + WATERMARK（与 skeleton.html section 6 对齐）
+   ============================================================ */
+.deck-bottom {
+  position: absolute;
+  bottom: 1.8cqw; left: 0; right: 0;
+  text-align: center;
+  font-size: 0.9cqw;
+  color: var(--brand);
+  letter-spacing: 0.05em;
+  z-index: 49;
+  transition: opacity 0.3s ease;
+}
+.deck-bottom .brand { font-weight: 600; }
+.deck-bottom .sep { margin: 0 0.5em; opacity: 0.5; }
+.deck-bottom.hidden { opacity: 0; pointer-events: none; }
+
+.slide::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 550 130'><g fill='%230A0A0A'><path d='M 62 6 C 56 14 50 20 48 24 L 38 12 L 36 28 C 22 38 14 54 14 72 C 14 94 30 104 50 104 C 70 104 86 94 86 72 C 86 48 76 26 62 6 Z'/><text x='115' y='92' font-family='-apple-system,system-ui,sans-serif' font-weight='700' font-size='92' letter-spacing='-3'>AI Spark</text></g></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 41%;
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: -1;
+}
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- break slide 不显示 chrome（装配时加 data-no-chrome="true"），本 preview 里直接不渲染 -->
+
+  <div class="slide break">
+    <div class="icon fade-up d1">[☕]</div>
+    <div class="label fade-up d2">[中场休息]</div>
+    <h1 class="fade-up d3">[大号主句 · 休息 · 走动 · 喝水]</h1>
+    <div class="duration fade-up d4">[10 min]</div>
+    <div class="hint fade-up d5">[一句温度提示 · 解释为什么休息 / 回来做什么 · 不超过两行]</div>
+  </div>
+
+  <!-- 底部 slogan 条（与 skeleton.html 同步） -->
+  <div class="deck-bottom">
+    <span class="brand">AI Spark</span>
+    <span class="sep">·</span>
+    <span>始于火花 成于实战</span>
+  </div>
+
+</div>
+
+<script>
+/* 循环播放：fade-up d1-d5 链入场 → 停顿 → 重播 */
+(function () {
+  const slide = document.querySelector('.slide');
+
+  function play() {
+    slide.classList.add('no-anim');
+    slide.classList.remove('active', 'playing');
+    void slide.offsetWidth;
+    requestAnimationFrame(() => {
+      slide.classList.remove('no-anim');
+      requestAnimationFrame(() => {
+        slide.classList.add('active', 'playing');
+      });
+    });
+  }
+
+  play();
+  // 入场 ≈ d5 delay 0.9s + transition 0.85s = 1.75s + 4.25s 停顿 = 6s 循环
+  setInterval(play, 6000);
+})();
+</script>
+
+</body>
+</html>

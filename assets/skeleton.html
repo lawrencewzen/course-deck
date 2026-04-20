@@ -13,6 +13,8 @@
     - 4. SLIDE BASE & TRANSITION      （.slide opacity 切换 + .content 壳）
     - 5. ANIMATION PRIMITIVES         （.fade-up / .fade-in / .d1-.d8 /
                                        .no-anim / .step）
+    - 6. GLOBAL SLOGAN + WATERMARK    （.deck-bottom 品牌蓝 slogan 条 +
+                                       .slide::before flame+AI Spark 水印）
     - 15. SPEAKER NOTES PANEL
     - 16. HOTKEY HELP OVERLAY
     - 17. TIMER
@@ -20,11 +22,12 @@
     HTML
     - <symbol id="logo-flame">        （品牌火苗）
     - .deck 外壳 + .deck-progress + .deck-top 面包屑 + .deck-timer
+    - .deck-bottom                    （底部 slogan 条）
     - .notes / .hotkey-help 浮层
 
     JS
     - DECK CONTROLLER                 （双 rAF 重播 / stepped / chrome 同步
-                                       / 键盘 / 点击翻页）
+                                       / cover 隐 slogan / 键盘 / 点击翻页）
 
   每页 slide 的**版式 CSS + HTML 结构**不在本骨架内。模型按 md 内容自由
   设计，受 SKILL.md 4 条视觉底线约束。版式思路可参考
@@ -209,6 +212,38 @@ body {
 .step.revealed { opacity: 1; transform: translateY(0); }
 
 /* ============================================================
+   6. GLOBAL SLOGAN + WATERMARK (品牌身份 · deck 级别全局 chrome / bg)
+   ============================================================ */
+/* 底部 slogan 条：挂在 .deck 上（不在 slide 里），居中品牌蓝 */
+.deck-bottom {
+  position: absolute;
+  bottom: 1.8cqw; left: 0; right: 0;
+  text-align: center;
+  font-size: 0.9cqw;
+  color: var(--brand);
+  letter-spacing: 0.05em;
+  z-index: 49;
+  transition: opacity 0.3s ease;
+}
+.deck-bottom .brand { font-weight: 600; }
+.deck-bottom .sep { margin: 0 0.5em; opacity: 0.5; }
+.deck-bottom.hidden { opacity: 0; pointer-events: none; }
+
+/* 背景水印层：flame + "AI Spark" 黑剪影，居中极淡，全部页面都显示 */
+.slide::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 550 130'><g fill='%230A0A0A'><path d='M 62 6 C 56 14 50 20 48 24 L 38 12 L 36 28 C 22 38 14 54 14 72 C 14 94 30 104 50 104 C 70 104 86 94 86 72 C 86 48 76 26 62 6 Z'/><text x='115' y='92' font-family='-apple-system,system-ui,sans-serif' font-weight='700' font-size='92' letter-spacing='-3'>AI Spark</text></g></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 41%;
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ============================================================
    15. SPEAKER NOTES PANEL
    ============================================================ */
 .notes {
@@ -356,6 +391,13 @@ body {
     <span>已用 <span class="sec-elapsed" id="t-sec-elapsed">00:00</span></span>
   </div>
 
+  <!-- 底部 slogan 条 · cover 页由 controller 自动隐藏（cover 自己 footer 有 slogan 位） -->
+  <div class="deck-bottom" id="deck-bottom">
+    <span class="brand">AI Spark</span>
+    <span class="sep">·</span>
+    <span>始于火花 成于实战</span>
+  </div>
+
   <!-- ===========================================================
        SLIDES · 这里按 md 内容插入每页 slide
        ===========================================================
@@ -439,6 +481,7 @@ body {
   const notesStrategy = document.getElementById('notes-strategy');
   const notesSpeak = document.getElementById('notes-speak');
   const help = document.getElementById('hotkey-help');
+  const deckBottom = document.getElementById('deck-bottom');
 
   bcTotal.textContent = total;
 
@@ -493,6 +536,7 @@ body {
     const showChrome = !noChrome && !isCover;
 
     deckTop.classList.toggle('visible', showChrome);
+    deckBottom.classList.toggle('hidden', isCover);
     if (showChrome) {
       const sec = active.dataset.section;
       const name = active.dataset.sectionName;
