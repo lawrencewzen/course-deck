@@ -268,6 +268,55 @@ body {
 }
 
 /* ============================================================
+   7. CODE BLOCKS (<pre><code>) + 复制按钮
+   ============================================================ */
+.slide pre {
+  position: relative;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  border-radius: 0.6cqw;
+  padding: 1.4cqw 1.6cqw;
+  font-size: 1.1cqw;
+  line-height: 1.55;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  -webkit-user-select: text; user-select: text;
+}
+.slide pre code { font-family: inherit; font-size: inherit; background: none; padding: 0; color: inherit; }
+.slide :not(pre) > code {
+  background: var(--line-2);
+  color: var(--ink);
+  padding: 0.05em 0.35em;
+  border-radius: 0.25cqw;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+}
+.slide pre .copy-btn {
+  position: absolute;
+  top: 0.6cqw; right: 0.6cqw;
+  background: rgba(255,255,255,0.08);
+  color: var(--code-fg);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 0.3cqw;
+  font: inherit;
+  font-size: 0.85cqw;
+  letter-spacing: 0.04em;
+  padding: 0.3cqw 0.7cqw;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+.slide pre:hover .copy-btn,
+.slide pre .copy-btn:focus { opacity: 1; }
+.slide pre .copy-btn:hover { background: rgba(255,255,255,0.18); }
+.slide pre .copy-btn.copied {
+  opacity: 1;
+  background: var(--done);
+  border-color: var(--done);
+  color: white;
+}
+
+/* ============================================================
    15. SPEAKER NOTES PANEL
    ============================================================ */
 .notes {
@@ -817,9 +866,47 @@ body {
 
   // === Click navigation ===
   document.querySelector('.deck').addEventListener('click', (e) => {
-    // ignore clicks on notes / help
-    if (e.target.closest('.notes, .hotkey-help')) return;
+    // ignore clicks on notes / help / 代码块（留给用户选中 + 复制）
+    if (e.target.closest('.notes, .hotkey-help, pre')) return;
     next();
+  });
+
+  // === Code block copy buttons ===
+  // 扫描所有 <pre>，右上角注入复制按钮；点按把 textContent 丢进剪贴板，
+  // 成功后按钮短暂变绿显示"已复制"。按钮自己 stopPropagation 避免触发翻页。
+  document.querySelectorAll('.slide pre').forEach(pre => {
+    if (pre.querySelector(':scope > .copy-btn')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy-btn';
+    btn.textContent = '复制';
+    btn.setAttribute('aria-label', '复制代码');
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const code = pre.querySelector('code');
+      const text = (code ? code.textContent : pre.textContent) || '';
+      const done = () => {
+        btn.classList.add('copied');
+        btn.textContent = '已复制';
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.textContent = '复制';
+        }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(() => {
+          // 非安全上下文（file://）退回 execCommand
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand('copy'); done(); } catch {}
+          document.body.removeChild(ta);
+        });
+      }
+    });
+    pre.appendChild(btn);
   });
 
   // === Init ===
